@@ -1,4 +1,4 @@
-<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#101827"><title>FORTRESS LEGENDS Prototype</title><style>*{box-sizing:border-box}body{margin:0;background:#101827;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{max-width:980px;margin:auto;padding:12px}h1{font-size:18px;margin:4px 0 10px}canvas{width:100%;aspect-ratio:16/9;background:#1c3042;border:2px solid #6c879e;border-radius:12px;display:block}#hud{display:flex;justify-content:space-between;gap:8px;margin:10px 0;font-weight:700}#units{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}button{touch-action:manipulation;border:0;border-radius:12px;background:#285b80;color:white;padding:13px 6px;font-size:14px;font-weight:700}button:disabled{opacity:.4}#reset{background:#495364;margin-top:10px;width:100%}#status{min-height:22px;text-align:center;color:#e8d59b;font-weight:bold}small{color:#b8c8d8}</style><main><h1>FORTRESS LEGENDS <small>｜試作版 2.0.2</small></h1><div id="hud"><span id="hp">自軍 500 / 500</span><span id="mana">マナ 40 / 100</span><span id="enemy">敵軍 500 / 500</span><span id="enemyMana">敵マナ 40 / 100</span></div><canvas id="game" width="960" height="540" aria-label="拠点攻防ゲーム"></canvas><p id="status">敵の猛攻を防ぎ、拠点の防衛砲を突破しよう！</p><div id="units"><button data-type="guard">🛡️ ガーディアン<br>20 マナ</button><button data-type="ranger">🏹 レンジャー<br>30 マナ</button><button data-type="golem">⚙️ ゴーレム<br>55 マナ</button></div><button id="reset">最初からやり直す</button><p><small>iPhoneのSafariでプレイできます。横向き推奨。素材はCanvas図形で描画しています。</small></p></main><script>
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><meta name="theme-color" content="#101827"><title>FORTRESS LEGENDS Prototype</title><style>*{box-sizing:border-box}body{margin:0;background:#101827;color:#fff;font-family:system-ui,-apple-system,sans-serif}main{max-width:980px;margin:auto;padding:12px}h1{font-size:18px;margin:4px 0 10px}canvas{width:100%;aspect-ratio:16/9;background:#1c3042;border:2px solid #6c879e;border-radius:12px;display:block}#hud{display:flex;justify-content:space-between;gap:8px;margin:10px 0;font-weight:700}#units{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}button{touch-action:manipulation;border:0;border-radius:12px;background:#285b80;color:white;padding:13px 6px;font-size:14px;font-weight:700}button:disabled{opacity:.4}#reset{background:#495364;margin-top:10px;width:100%}#status{min-height:22px;text-align:center;color:#e8d59b;font-weight:bold}small{color:#b8c8d8}</style><main><h1>FORTRESS LEGENDS <small>｜試作版 2.0.3</small></h1><div id="hud"><span id="hp">自軍 500 / 500</span><span id="mana">マナ 40 / 100</span><span id="enemy">敵軍 500 / 500</span><span id="enemyMana">敵マナ 40 / 100</span></div><canvas id="game" width="960" height="540" aria-label="拠点攻防ゲーム"></canvas><p id="status">敵の猛攻を防ぎ、拠点の防衛砲を突破しよう！</p><div id="units"><button data-type="guard">🛡️ ガーディアン<br>20 マナ</button><button data-type="ranger">🏹 レンジャー<br>30 マナ</button><button data-type="golem">⚙️ ゴーレム<br>55 マナ</button></div><button id="reset">最初からやり直す</button><p><small>iPhoneのSafariでプレイできます。横向き推奨。素材はCanvas図形で描画しています。</small></p></main><script>
 (()=>{'use strict';
 const c=document.getElementById('game'),ctx=c.getContext('2d'),status=document.getElementById('status'),hpEl=document.getElementById('hp'),manaEl=document.getElementById('mana'),enemyEl=document.getElementById('enemy'),enemyManaEl=document.getElementById('enemyMana');
 const stats={
@@ -9,10 +9,10 @@ const defs={};
 for(const [type,st] of Object.entries(stats))defs[type]={...st,color:{guard:'#58c5e8',ranger:'#9fe28d',golem:'#e7b87c'}[type]};
 for(const [alias,type,color] of [['foe','guard','#ef7887'],['archer','ranger','#e5a3c4'],['brute','golem','#bd6fdb']])defs[alias]={...stats[type],color};
 const counter={guard:'ranger',ranger:'golem',golem:'guard'};
-let units,mana,enemyMana,home,fort,elapsed,spawnTimer,ended,last,wave,turretTimer;
-function reset(){units=[];mana=40;enemyMana=40;home=500;fort=500;elapsed=0;spawnTimer=1.5;turretTimer=1.8;ended=false;wave=1;last=performance.now();status.textContent='公平なCPU対戦：敵も同じマナと兵種で戦う！'}
+let units,mana,enemyMana,home,fort,elapsed,spawnTimer,ended,last,wave,turretTimer,cpuSummonCount;
+function reset(){cpuSummonCount=0;units=[];mana=40;enemyMana=40;home=500;fort=500;elapsed=0;spawnTimer=1.5;turretTimer=1.8;ended=false;wave=1;last=performance.now();status.textContent='公平なCPU対戦：敵も同じマナと兵種で戦う！'}
 function summon(type,team){if(ended)return false;const d=defs[type];
-if(team===1){if(mana<d.cost)return false;mana-=d.cost}else{if(enemyMana<d.cost)return false;enemyMana-=d.cost}
+if(team===1){if(mana<d.cost)return false;mana-=d.cost}else{if(enemyMana<d.cost)return false;enemyMana-=d.cost;cpuSummonCount++}
 units.push({type,team,x:team===1?112:848,hp:d.hp,max:d.hp,damage:d.damage,attackTimer:0,id:Math.random()});return true}
 function chooseEnemy(){
 const allies=units.filter(u=>u.team===1&&u.hp>0),enemies=units.filter(u=>u.team===-1&&u.hp>0);
@@ -21,8 +21,8 @@ const count={guard:0,ranger:0,golem:0};
 for(const u of (near.length?near:allies))count[defs[u.type].kind]++;
 let choice='foe';
 // LV.1 CPU: basic units only; no counter-picking or golem summons.
-if(enemies.filter(u=>defs[u.type].kind==='guard').length<2)choice='foe';
-else choice='archer';
+// LV.1 CPU: alternate basic units, avoiding repeated guard reinforcement.
+choice=cpuSummonCount%2===0?'foe':'archer';
 if(enemyMana<defs[choice].cost){
 if(enemyMana>=defs.archer.cost)choice='archer';
 else if(enemyMana>=defs.foe.cost)choice='foe';
